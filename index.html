@@ -1,71 +1,106 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <title>WebSockets - Simple chat</title>
-    <style>
-    * { font-family:tahoma; font-size:12px; padding:0px;margin:0px;}
+    <head>
+        <meta charset="utf-8">
+        <title>WebSockets - Simple chat</title>
+        <style>
+        * { font-family:tahoma; font-size:12px; padding:0px;margin:0px;}
 
-    #root.chat {
-      width: 500px;
-      margin-left: auto;
-      margin-right: auto;
-    }
+        #root.chat {
+          width: 500px;
+          margin-left: auto;
+          margin-right: auto;
+        }
 
-    #root.chat .content-wrapper {
-        padding: 5px;
-        background: #ddd;
-        border-radius: 5px;
-        border: 1px solid #CCC;
-        margin-top: 10px;
-        height: 160px;
-        display: flex;
-        flex-direction: row;
-    }
+        #root.chat .content-wrapper {
+            padding: 5px;
+            background: #ddd;
+            border-radius: 5px;
+            border: 1px solid #CCC;
+            margin-top: 10px;
+            height: 160px;
+            display: flex;
+            flex-direction: row;
+        }
 
-    #root.chat .content,
-    #root.chat .user-list {
-        position: relative;
-        display: inline-block;
-        height: 100%;
-        overflow-y: scroll;
-        border: 1px solid rgba(0,0,0,0.2);
-    }
+        #root.chat .content,
+        #root.chat .user-list {
+            position: relative;
+            display: inline-block;
+            height: 100%;
+            overflow-y: scroll;
+            border: 1px solid rgba(0,0,0,0.2);
+        }
 
-    #root.chat .content {
-        flex: 1;
-    }
+        #root.chat .content {
+            flex: 1;
+        }
 
-    #root.chat .user-list {
-        width: 100px;
-        background: #eee;
-    }
+        #root.chat .user-list {
+            width: 100px;
+            background: #eee;
+        }
 
-    #root.chat input {
-        border-radius: 2px;
-        border: 1px solid #ccc;
-        margin-top: 10px;
-        padding: 5px;
-        width: 400px;
-    }
+        #root.chat input {
+            border-radius: 2px;
+            border: 1px solid #ccc;
+            margin-top: 10px;
+            padding: 5px;
+            width: 400px;
+        }
 
-    #root.chat .status {
-        display: block;
-        margin-top: 15px;
-    }
+        #root.chat .status {
+            display: block;
+            margin-top: 15px;
+        }
 
-    #root.chat .date {
-        font-size: 75%;
-        text-align: right;
-        font-style: italic;
-    }
+        #root.chat .date {
+            font-size: 75%;
+            text-align: right;
+            font-style: italic;
+        }
 
-  </style>
-  </head>
-  <body>
+        #root.chat .user-item {
+            cursor: pointer;
+        }
 
-    <div class="chat" id="root"> <!-- root element for chat --> </div>
+        #root.chat .msg-item {
+            position: relative;
+            line-height: 16px;
+        }
 
-    <script src="./frontend.js"></script>
-  </body>
+        #root.chat .delete-msg {
+            position: absolute;
+            right: 0;
+            top: 0;
+            border-radius: 3px;
+            height: 14px;
+            width: 14px;
+            text-align: center;
+            background-color: #aaa;
+            border: 1px outset #888;
+            color: #000;
+            font-family: arial;
+            font-size: 14px;
+            display: inline-block;
+            user-select: none;
+            transition: 0.3s ease;
+            cursor: pointer;
+        }
+
+        #root.chat .delete-msg:hover {
+            background-color: #bbb;
+        }
+
+        #root.chat .delete-msg:active {
+            background-color: #ccc;
+            border: 1px inset #aaa;
+        }
+
+        </style>
+      </head>
+    <body>
+        <div class="chat" id="root"> <!-- root element for chat --> </div>
+        <script src="./frontend.js"></script>
+    </body>
 </html>

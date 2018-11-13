@@ -25,20 +25,20 @@ const wsServer = new webSocketServer({
 
 // This callback function is called every time someone tries to connect to the WebSocket server
 wsServer.on('request', request => {
-    console.log(+Date.now() + ' Connection from origin ' + request.origin + '.');
-
     // accept connection - you should check 'request.origin' to
     // make sure that client is connecting from your website
     // (http://en.wikipedia.org/wiki/Same_origin_policy)
     // we need id for connections
     const connection = request.accept(null, request.origin);
-    let index = clients.push(connection) - 1;
+    let id = RandomId();
+    connection.id = id;
+    clients[id] = connection;
+    console.log(Date.now(),' Connection accepted.');
 
-    console.log(+Date.now() + ' Connection accepted.');
-
+    // we need user details
+    sendBroadcast('init', {}, connection);
     // send back chat history
-    console.log(userList);
-    (history.length > 0) && sendBroadcast('history', {msg: history, users: userList}, connection);
+    sendBroadcast('history', {msg: history, users: userList}, connection);
 
     /*
       if user send message or username then we register it
@@ -53,7 +53,7 @@ wsServer.on('request', request => {
         try {
             data = JSON.parse(message.utf8Data);
         } catch (e) {
-            return console.log('Invalid data: ', message.utf8Data, 'timestamp: ' + +Date.now());
+            return console.log('Invalid data: ', message.utf8Data, 'timestamp: ', Date.now());
         }
 
         let type = Object.keys(data)[0];
@@ -61,11 +61,23 @@ wsServer.on('request', request => {
         if (type == "user") {
             obj = data.user;
             obj.name = htmlEntities(obj.name);
-            console.log(`(${userList[obj.id || 0] ? 'Existing' : 'New'}) user change his or her name: ${obj.name}`);
+            if (userList[obj.id]) {
+                console.log(`Existing user change his or her name: ${obj.name}`);
+            } else {
+                console.log(`New user change his or her name: ${obj.name}`);
+            }
             userList[obj.id] = obj;
-            clients[index].userId = obj.id;
+            clients[id]['userId'] = obj.id;
+        } else if (type == "deleteMsg") {
+            const id = data.deleteMsg.id;
+            for (const i in history) {
+                if (history[i].id == id) {
+                    return sendBroadcast(type, data.deleteMsg);
+                }
+            }
+
         } else if (type == "msg") {
-            const user = userList[clients[index].userId];
+            const user = userList[clients[id].userId];
             obj = {
                 id: RandomId(),
                 date: +Date.now(),
@@ -77,7 +89,7 @@ wsServer.on('request', request => {
             console.log(`New message (${Date.now()}): ${obj.text}`);
             // we want to keep history of all sent messages
             history.push(obj);
-            history = history.slice(-100);
+            history = history.splice(-100);
         }
         obj && sendBroadcast(type, obj);
     });
@@ -88,25 +100,33 @@ wsServer.on('request', request => {
       send boardcast to remain clients
     */
     connection.on('close', connection => {
-        if (clients[index]) {
-            const userId = clients[index].userId || false;
-            console.log( (userId ? userList[userId].name : "Guest") + " disconnected.");
-            if (userId) {
-                delete userList[userId];
-                sendBroadcast("disconnect", { userId })
-            }
-            clients.splice(index, 1);
-        }
+        closeConnection(id);
     });
 });
+
+function closeConnection(id) {
+    console.log("dced: "+id, Object.keys(clients));
+    if (clients[id]) {
+        const userId = clients[id].userId || false;
+        delete clients[id];
+        if (!isUserConnected(userId)) {
+            delete userList[userId];
+            sendBroadcast("disconnect", { userId })
+        }
+    }
+}
+
+function isUserConnected(id) {
+    return Object.values(clients).some(e => e.userId == id );
+}
 
 function sendBroadcast(type, data, con = null) {
     const json = JSON.stringify({ type, data });
     if (con) {
         return con.sendUTF(json);
     }
-    for (const client of clients) {
-        client.sendUTF(json);
+    for (const i in clients) {
+        clients[i].sendUTF(json);
     }
 }
 

@@ -14,8 +14,8 @@ function ChatComponent(setup) {
             </div>`
         },
         message(list, data) {
-            const options = user.id === data.userId ? "---" : "";
-            return `<div data-id="msg_${data.id}" data-user-id="${data.userId}">
+            const options = user.id === data.userId ? template.deleteMsgButton(data) : ``;
+            return `<div class="msg-item" data-id="msg_${data.id}" data-user-id="${data.userId}">
                 <span class="name" style="color: ${colors[data.color]};">
                   ${data.name}
                 </span>:
@@ -24,9 +24,12 @@ function ChatComponent(setup) {
                 ${options}
             </div>`
         },
+        deleteMsgButton(data) {
+              return `<div class="delete-msg" data-click="deleteMsg" data-id="${data.id}">&times;</div>`;
+        },
         user(data) {
             const color = getUsercolor(data.id);
-            return `<div style="color: ${color};" data-id="${data.id}">
+            return `<div class="user-item" style="color: ${color};" data-id="${data.id}">
                 ${data.name}
             </div>`;
         },
@@ -79,13 +82,13 @@ function ChatComponent(setup) {
             status: root.querySelector(`.status`)
         };
 
-        DOM.name.value = user.name;
+        DOM.root.addEventListener("click", eventHandler);
 
         ws.con = new WebSocket(`ws://${setup.server}:${setup.port}`);
 
         ws.con.onopen = function () {
             DOM.name.disabled = false;
-            userList[user.id] = user;
+            //userList[user.id] = user;
             setStatus('Connected!');
         };
 
@@ -102,15 +105,29 @@ function ChatComponent(setup) {
               return console.log('Invalid JSON: ', message.data, msg);
             }
 
-            if (msg.type === 'user') {
-                userList[msg.data.id] = msg.data;
-                if (msg.data.id != user.id) {
-                    template.users([msg.data], 'append');
-                    console.log(`${msg.data.id} connected`);
-                } else {
-                    const userDiv = DOM.users.querySelector(`[data-id="${user.id}"]`);
-                    userDiv && (userDiv.textContent = user.name);
+            if (msg.type === 'init') {
+                if (user.name != "Guest") {
+                    DOM.name.value = user.name;
+                    DOM.name.disabled = true;
+                    DOM.msg.disabled = false;
                 }
+                ws.con.send(JSON.stringify({user}));
+            } else if (msg.type === 'user') {
+                const newUser = msg.data,
+                      oldUser = userList[newUser.id] ? cloneObject(userList[newUser.id]): false,
+                      isNewUser = !userList[newUser.id];
+                userList[newUser.id] = newUser;
+                if (isNewUser) {
+                    template.users([newUser], 'append');
+                    console.log(`${newUser.id} connected`);
+                    sendSystemMessage(`${newUser.name} user connected...`);
+                } else {
+                    const
+                    userDiv = DOM.users.querySelector(`[data-id="${newUser.id}"]`);
+                    userDiv && (userDiv.textContent = newUser.name);
+                    sendSystemMessage(`${oldUser.name} was renamed to ${newUser.name}...`);
+                }
+                console.log(msg.data, isNewUser);
             } else if (msg.type === 'history') { // entire message history
                   userList = Object.assign(userList, msg.data.users);
                   template.users(Object.values(userList), 'append');
@@ -119,16 +136,23 @@ function ChatComponent(setup) {
                   for (const msgData  of msgs) {
                       addMessage (msgData);
                   }
+                  sendSystemMessage("Chat content loaded...");
             } else if (msg.type === 'disconnect') {
-                console.log(`${msg.data.userId} disconnected`);
-                const userDiv = DOM.users.querySelector(`[data-id="${msg.data.userId}"]`);
+                const oldUser = userList[msg.data.userId],
+                      userDiv = DOM.users.querySelector(`[data-id="${msg.data.userId}"]`);
                 userDiv && userDiv.remove();
+                sendSystemMessage(`${oldUser.name} disconnected...`);
+                delete userList[msg.data.userId];
+            } else if (msg.type === 'deleteMsg') {
+                const msgDiv = DOM.content.querySelector(`[data-id="msg_${msg.data.id}"]`);
+                if (msgDiv) {
+                    msgDiv.remove();
+                }
             } else if (msg.type === 'msg') {
                 DOM.msg.disabled = false;
                 addMessage (msg.data);
-                DOM.content.scrollTop = DOM.content.scrollHeight;
             } else {
-                console.log('Hmm..., I\'ve never seen JSON like this:', msg);
+                console.log('unknown json:', msg);
             }
         };
 
@@ -153,9 +177,7 @@ function ChatComponent(setup) {
               if (!user.name) {
                   return alert('You must have a name!');
               }
-
               const msg = e.value.trim();
-
               if (!msg) {
                 return alert("empty field");
               }
@@ -183,12 +205,40 @@ function ChatComponent(setup) {
 
         function addMessage(data) {
             DOM.content.insertAdjacentHTML('beforeend', template.message(userList, data));
+            DOM.content.scrollTop = DOM.content.scrollHeight;
+        }
+
+        // this messages are only in client side
+        function sendSystemMessage(msg) {
+            addMessage({
+                id: RandomId(),
+                date: +Date.now(),
+                name: "System",
+                color: 0,
+                userId: 0,
+                text: msg
+            });
         }
     }
 
+    const eventActions = {
+        deleteMsg(e, ev, d) {
+            d.id && ws.con.send(JSON.stringify({deleteMsg:{id:d.id}}));
+        }
+    }
 
+    function eventHandler(ev) {
+        const e = ev.target,
+              d = e.dataset,
+              t = d[ev.type] || false;
+        if (!t || !eventActions[t]) {
+            return console.log('error');
+        }
+        eventActions[t](e, ev, d);
+    }
 
     function getUsercolor(id) {
+        console.log(colors, userList[id], id);
         return colors[userList[id].color];
     }
 
@@ -220,7 +270,17 @@ function ChatComponent(setup) {
     		);
     }
 
-  return {}
+    function cloneObject(obj) {
+        return JSON.parse(JSON.stringify(obj));
+    }
+
+    return {
+        remove() {
+            // remove dom, eventlisteners etc
+            DOM.root.remove();
+            DOM.root.removeEventListener("click", eventHandler);
+        }
+    }
 }
 
 const setup = {
