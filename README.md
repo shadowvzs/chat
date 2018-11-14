@@ -1,7 +1,7 @@
 # chat
 nodeJS, webscocket
 
-##Simple chat with following options:
+## Simple chat with following options:
 
 Registered and broadcasted events:
 * user is connected
