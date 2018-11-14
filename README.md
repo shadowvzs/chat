@@ -3,6 +3,8 @@ nodeJS, webscocket
 
 ## Simple chat with following options:
 
+Video: https://www.youtube.com/watch?v=5MytixFWSek
+
 Registered and broadcasted events:
 * user is connected
 * user change his name
