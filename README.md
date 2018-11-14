@@ -9,4 +9,4 @@ Registered and broadcasted events:
 * user send message
 * user delete is message
 * user disconnected from chat (iwhen his every connection was closed)
-* user open again the window then user data readed from localStorage
+* user open again the window then user data readed from localStorage (user get back his name, color & id)
