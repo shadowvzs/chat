@@ -1,5 +1,13 @@
 "use strict"
  //localStorage.clear("user");
+
+ const setup = {
+     rootSelector: "#root.chat",
+     server: "172.17.0.2",
+     port: "80",
+     typeing: 3000   // time duration if user pressed a key
+ }
+
 function ChatComponent(setup) {
     const template = {
         window() {
@@ -8,9 +16,11 @@ function ChatComponent(setup) {
             <div class="user-list"></div>
             </div>
             <div>
-                <div class="status">Connecting...</div>
-                <div>Name: <input name="fullname" type="text" disabled="disabled" /></div>
-                <div>Message <input name="message" type="text" disabled="disabled" /></div>
+                <div class="details">
+                    <input name="fullname" type="text" placeholder="Your name" disabled="disabled" />
+                    <span class="status"> Connecting... </span>
+                </div>
+                <div><input name="message" type="text" placeholder="Message" disabled="disabled" /></div>
             </div>`
         },
         message(list, data) {
@@ -50,7 +60,10 @@ function ChatComponent(setup) {
     user = getUser(),
     colors = [ 'red', 'green', 'blue', 'magenta', 'purple', 'plum', 'orange' ];
 
-    let DOM, userList = {};
+    let DOM,
+        userList = {},
+        timer,
+        typingStatus = false;
 
     window.WebSocket = window.WebSocket || window.MozWebSocket;
     if (!window.WebSocket) {
@@ -119,7 +132,6 @@ function ChatComponent(setup) {
                 userList[newUser.id] = newUser;
                 if (isNewUser) {
                     template.users([newUser], 'append');
-                    console.log(`${newUser.id} connected`);
                     sendSystemMessage(`${newUser.name} user connected...`);
                 } else {
                     const
@@ -127,7 +139,6 @@ function ChatComponent(setup) {
                     userDiv && (userDiv.textContent = newUser.name);
                     sendSystemMessage(`${oldUser.name} was renamed to ${newUser.name}...`);
                 }
-                console.log(msg.data, isNewUser);
             } else if (msg.type === 'history') { // entire message history
                   userList = Object.assign(userList, msg.data.users);
                   template.users(Object.values(userList), 'append');
@@ -143,6 +154,11 @@ function ChatComponent(setup) {
                 userDiv && userDiv.remove();
                 sendSystemMessage(`${oldUser.name} disconnected...`);
                 delete userList[msg.data.userId];
+            } else if (msg.type === 'typing') {
+                const userDiv = DOM.users.querySelector(`[data-id="${msg.data.id}"]`),
+                      status = msg.data.status;
+                userDiv.title = status ? 'typing....' : 'idle';
+                userDiv.classList[status ? 'add' : 'remove']('typing');
             } else if (msg.type === 'deleteMsg') {
                 const msgDiv = DOM.content.querySelector(`[data-id="msg_${msg.data.id}"]`);
                 if (msgDiv) {
@@ -172,24 +188,36 @@ function ChatComponent(setup) {
         };
 
         DOM.msg.onkeydown = ev => {
-          const e = ev.target;
-          if (ev.keyCode === 13) {
-              if (!user.name) {
-                  return alert('You must have a name!');
-              }
-              const msg = e.value.trim();
-              if (!msg) {
-                return alert("empty field");
-              }
-              // send the message as an ordinary text
-              ws.con.send(JSON.stringify({ msg }));
-              e.value = '';
-              // disable the input field to make the user wait until server
-              // sends back response
-              DOM.msg.disabled = true;
-              DOM.name.disabled = true;
-          }
+            const e = ev.target;
+            if (ev.keyCode === 13) {
+                if (!user.name) {
+                    return alert('You must have a name!');
+                }
+                const msg = e.value.trim();
+                if (!msg) {
+                  return alert("empty field");
+                }
+                // send the message as an ordinary text
+                ws.con.send(JSON.stringify({ msg }));
+                e.value = '';
+                // disable the input field to make the user wait until server
+                // sends back response
+                DOM.msg.disabled = true;
+                DOM.name.disabled = true;
+                setTypingStatus(false);
+            } else {
+                !typingStatus && setTypingStatus(true);
+                timer && clearTimeout(timer);
+                timer = setTimeout( () => setTypingStatus(false), setup.typeing);
+            }
         };
+
+        function setTypingStatus(status) {
+            const json = JSON.stringify({typing:{id:user.id,status}});
+            ws.con.send(json);
+            typingStatus = status;
+            timer && clearTimeout(timer) || (timer = null);
+        }
 
         function setStatus(msg) {
             DOM.status.textContent = msg;
@@ -232,13 +260,12 @@ function ChatComponent(setup) {
               d = e.dataset,
               t = d[ev.type] || false;
         if (!t || !eventActions[t]) {
-            return console.log('error');
+            return;
         }
         eventActions[t](e, ev, d);
     }
 
     function getUsercolor(id) {
-        console.log(colors, userList[id], id);
         return colors[userList[id].color];
     }
 
@@ -281,12 +308,6 @@ function ChatComponent(setup) {
             DOM.root.removeEventListener("click", eventHandler);
         }
     }
-}
-
-const setup = {
-    rootSelector: "#root.chat",
-    server: "172.17.0.2",
-    port: "80"
 }
 
 new ChatComponent(setup);

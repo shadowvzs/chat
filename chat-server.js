@@ -68,11 +68,15 @@ wsServer.on('request', request => {
             }
             userList[obj.id] = obj;
             clients[id]['userId'] = obj.id;
+        } else if (type == "typing") {
+            const id = data[type].id;
+            sendBroadcast(type, data[type]);
         } else if (type == "deleteMsg") {
-            const id = data.deleteMsg.id;
+            const id = data[type].id;
             for (const i in history) {
                 if (history[i].id == id) {
-                    return sendBroadcast(type, data.deleteMsg);
+                    history.splice(i, 1);
+                    return sendBroadcast(type, data[type]);
                 }
             }
 
