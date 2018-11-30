@@ -3,7 +3,7 @@
 
  const setup = {
      rootSelector: "#root.chat",
-     server: "172.17.0.2",
+     server: "chat-ws-node.herokuapp.com",
      port: "80",
      typeing: 3000   // time duration if user pressed a key
  }

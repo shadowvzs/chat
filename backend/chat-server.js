@@ -3,7 +3,7 @@
 // Optional. You will see this name in eg. 'ps' or 'top' command
 process.title = 'node-chat';
 
-const wsPort = 80,
+const wsPort = process.env.PORT || 80,
       webSocketServer = require('websocket').server,
       http = require('http'),
       clients = [],
@@ -11,6 +11,8 @@ const wsPort = 80,
       server = http.createServer((request, response) => { /* we not use http */ });
 
 let history = [];
+
+console.log('port: ', wsPort);
 
 server.listen(wsPort, () => {
     console.log((new Date()) + " Server is listening on port " + wsPort);
